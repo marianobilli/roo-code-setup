@@ -1,0 +1,47 @@
+{
+  "mcpServers": {
+    "firecrawl": {
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "$env:FIRECRAWL_API_KEY = (cmdkey /generic:MCP_FIRECRAWL | Select-String \"Password: (.*)\" -ErrorAction SilentlyContinue).Matches.Groups[1].Value; npx -y firecrawl-mcp"
+      ],
+      "env": {},
+      "disabled": false,
+      "alwaysAllow": []
+    },
+    "github": {
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "$env:GITHUB_TOKEN = (cmdkey /generic:MCP_GITHUB | Select-String \"Password: (.*)\" -ErrorAction SilentlyContinue).Matches.Groups[1].Value; npx @modelcontextprotocol/server-github"
+      ],
+      "env": {},
+      "disabled": false,
+      "alwaysAllow": []
+    },
+    "brave-search": {
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "$env:BRAVE_API_KEY = (cmdkey /generic:MCP_BRAVE | Select-String \"Password: (.*)\" -ErrorAction SilentlyContinue).Matches.Groups[1].Value; npx -y @modelcontextprotocol/server-brave-search"
+      ],
+      "env": {},
+      "disabled": false,
+      "alwaysAllow": []
+    },
+    "sequentialthinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "env": {},
+      "disabled": false,
+      "alwaysAllow": [
+        "sequential_thinking",
+        "sequentialthinking"
+      ]
+    }
+  }
+}
