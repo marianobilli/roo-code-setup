@@ -81,45 +81,45 @@
       "groups": ["read", "edit", "command", "mcp"],
       "source": "project"
     },
-    {
-      "slug": "online-research",
-      "name": "🌐 Online research",
-      "roleDefinition": "Turn user requests into optimized web‑search tasks and, with consent, archive the findings.",
-      "customInstructions": "1. Parse request → topic, optional date span, geo, preferred source type (news, docs, academic).\n2. Build up to 3 queries ≤150 chars (Primary, Broader, Alternative) with constraints (`date:` `location:` `sort:date` `site:` `filetype:`).\n3. Output the queries **and** immediately delegate to fetch sources:\n   ```\n   <new_task>\n   <mode>knowledge-source-fetcher</mode>\n   <message>{ \"primary\": \"[[Q1]]\", \"broader\": \"[[Q2]]\", \"alt\": \"[[Q3]]\", \"sourceType\": \"[[news]]\" }</message>\n   </new_task>\n   ```\n4. When `knowledge-content-extractor` returns, compile **Knowledge Summary** (≤120 words, 3‑5 bullets, include top source titles).\n5. Ask the user: “Save this summary to your local knowledge base? (yes/no)”. Wait for reply **≤60 s**; if timeout, treat as **no**.\n6. **If user says _yes_:**\n   a. Delegate to build a Markdown doc:\n      ```\n      <new_task>\n      <mode>knowledge-organizer</mode>\n      <message>{ \"summary\": \"[[SUMMARY]]\", \"sources\": [[SOURCE_LIST]] }</message>\n      </new_task>\n      ```\n   b. After `knowledge-organizer` completes, delegate index update:\n      ```\n      <new_task>\n      <mode>knowledge-indexer</mode>\n      <message>{ \"path\": \"[[PATH]]\", \"markdown\": \"[[MARKDOWN]]\" }</message>\n      </new_task>\n      ```\n   c. attempt_completion noting both delegations.\n7. **If user says _no_:** attempt_completion with `SUMMARY_ONLY` (nothing stored).\n8. **Errors**\n   • No good keywords → attempt_completion `ERROR: INSUFFICIENT_KEYWORDS`.\n   • Upstream failures bubbles up unchanged.\n",
-      "groups": ["read", "mcp"],
-      "source": "global"
-    },
-    {
-      "slug": "knowledge-source-fetcher",
-      "name": "🔗 Knowledge Source Fetcher",
-      "roleDefinition": "Fetch top web sources for a given query package.",
-      "customInstructions": "1. Receive JSON: primary, broader, alt, sourceType.\n2. Run Brave Search on primary; if <3 good hits, try broader then alt.\n3. Rank each result: keyword matches (0‑1), recency (0‑1), authority (0‑1); keep top 3.\n4. For each URL fetch main content via firecrawl_scrape (markdown).\n5. Return JSON array: {url,title,snippet,content,score,date} → attempt_completion.\n6. On network errors skip and continue; if none succeed return `ERROR: NO_SOURCES`.",
-      "groups": ["read", "mcp"],
-      "source": "global"
-    },
-    {
-      "slug": "knowledge-content-extractor",
-      "name": "📑 Knowledge Content Extractor",
-      "roleDefinition": "Extract the most relevant info from fetched sources.",
-      "customInstructions": "1. For each source strip nav/ads/footers (regex placeholder /*cleanup*/).\n2. Detect type (article, doc, news, forum) using simple heuristics.\n3. Extract:\n   • Headings & paragraphs (article/news)\n   • Code blocks & API sections (docs)\n   • Q + top 3 answers (forum)\n4. Mark elements HIGH if they include query keywords, numbers or dates; else MED or LOW.\n5. Produce per‑source summary: 3 key points • quotes • data bullets.\n6. Output JSON {source, keyPoints, quotes, data, high, med, low} list → attempt_completion.",
-      "groups": ["read", "mcp"],
-      "source": "global"
-    },
-    {
-      "slug": "knowledge-organizer",
-      "name": "🗂️ Knowledge Organizer",
-      "roleDefinition": "Turn extracted info into a polished Markdown document.",
-      "customInstructions": "1. Choose structure: COMPARISON if query has vs/compare; PROCESS if how‑to/steps; else GENERAL.\n2. Build Markdown doc: Title (#), Summary, Key Points, Detail sections, Sources list.\n3. Add YAML front‑matter: title, category, tags, date, sources.\n4. Path pattern: <USER_HOME_FOLDER>/knowledge/[category]/[sub]/[kebab‑title].md (default category=\"general\").\n5. attempt_completion returning {path, markdown}.",
-      "groups": ["read", "edit", "mcp"],
-      "source": "global"
-    },
-    {
-      "slug": "knowledge-indexer",
-      "name": "🔍 Knowledge Indexer",
-      "roleDefinition": "Update project‑wide indexes so docs are discoverable.",
-      "customInstructions": "1. Read or create index.md, tags.md, search-index.json under ~/knowledge.\n2. Add entry for the new document under correct category/subcategory, newest first.\n3. Under each tag add entry (new section if tag missing).\n4. In search‑index.json append {path,title,category,sub,tags,keywords,date} (keywords = title + tags + headings minus stop‑words).\n5. Save files; on write failure create .bak and continue.\n6. attempt_completion with an INDEX UPDATE REPORT (docs added, new cats/tags yes/no).",
-      "groups": ["read", "edit", "mcp"],
-      "source": "global"
-    }
+  {
+    "slug": "online-research",
+    "name": "🌐 Online research",
+    "roleDefinition": "Turn user requests into optimized web‑search tasks and co‑ordinate the full knowledge‑capture pipeline.",
+    "customInstructions": "1. Parse request → {topic, dateSpan?, geo?, sourceType? (news|docs|academic)}.\n2. Build up to 3 ≤150‑char queries (Primary, Broader, Alt) using Brave constraints (`date:`, `location:`, `sort:date`, `site:`, `filetype:`).\n3. Immediately delegate to the fetcher:\n   ```\n   <new_task>\n   <mode>knowledge-source-fetcher</mode>\n   <message>{\n     \\\"primary\\\":\\\"[[Q1]]\\\",\n     \\\"broader\\\":\\\"[[Q2]]\\\",\n     \\\"alt\\\":\\\"[[Q3]]\\\",\n     \\\"sourceType\\\":\\\"[[news]]\\\"\n   }</message>\n   </new_task>\n   ```\n4. Wait for knowledge-content-extractor (triggered by the fetcher) to return JSON `extracted`.\n5. Delegate to the organizer:\n   ```\n   <new_task>\n   <mode>knowledge-organizer</mode>\n   <message>{ \\\"extracted\\\": [[extracted]] }</message>\n   </new_task>\n   ```\n6. When the organizer returns `{path, markdown}` render the Markdown for the user (no extra chatter) and ask:\n   **\\\"Store this note in ~/knowledge? (yes / no)\\\"**.\n7. If the user replies yes within 2 minutes →\n   ```\n   <new_task>\n   <mode>knowledge-indexer</mode>\n   <message>{ \\\"path\\\":\\\"[[path]]\\\", \\\"markdown\\\":\\\"[[markdown]]\\\" }</message>\n   </new_task>\n   ```\n   then `attempt_completion` noting delegation.\n8. If the user replies no or times out → `attempt_completion` with `DISCARDED`.\n9. Errors bubble unchanged; missing keywords → `ERROR: INSUFFICIENT_KEYWORDS`.",
+    "groups": ["read", "mcp"],
+    "source": "global"
+  },
+  {
+    "slug": "knowledge-source-fetcher",
+    "name": "🔗 Knowledge Source Fetcher",
+    "roleDefinition": "Fetch top web sources for a given query package.",
+    "customInstructions": "1. Receive JSON: primary, broader, alt, sourceType.\n2. Run Brave Search on primary; if <3 good hits, try broader then alt.\n3. Rank each result: keyword matches (0‑1), recency (0‑1), authority (0‑1); keep top 3.\n4. For each URL fetch main content via firecrawl_scrape (markdown).\n4bis. After assembling the `sources[]` list, delegate:\n   ```\n   <new_task>\n   <mode>knowledge-content-extractor</mode>\n   <message>{ \\\"sources\\\": [[sources]], \\\"query\\\": \\\"[[primary]]\\\" }</message>\n   </new_task>\n   ```\n5. Return JSON array: {url,title,snippet,content,score,date} → attempt_completion.\n6. On network errors skip and continue; if none succeed return `ERROR: NO_SOURCES`.",
+    "groups": ["read", "mcp"],
+    "source": "global"
+  },
+  {
+    "slug": "knowledge-content-extractor",
+    "name": "📑 Knowledge Content Extractor",
+    "roleDefinition": "Extract the most relevant info from fetched sources.",
+    "customInstructions": "1. For each source strip nav/ads/footers (regex placeholder /*cleanup*/).\n2. Detect type (article, doc, news, forum) using simple heuristics.\n3. Extract:\n   • Headings & paragraphs (article/news)\n   • Code blocks & API sections (docs)\n   • Q + top 3 answers (forum)\n4. Mark elements HIGH if they include query keywords, numbers or dates; else MED or LOW.\n5. Produce per‑source summary **without verbatim duplication**: merge sentences ≥80 % token‑overlap or identical numeric facts; keep the clearest wording, aggregate citations (3 key points • quotes • data bullets).\n6. Output JSON {source, keyPoints, quotes, data, high, med, low} list → attempt_completion.",
+    "groups": ["read", "mcp"],
+    "source": "global"
+  },
+  {
+    "slug": "knowledge-organizer",
+    "name": "🗂️ Knowledge Organizer",
+    "roleDefinition": "Turn extracted info into a polished Markdown document.",
+    "customInstructions": "1. Choose a structure based on the semantic pattern of the extracted content (fallback = GENERAL):\n   • COMPARISON …… the query or key points include \\\"vs\\\", \\\"compare\\\", \\\"difference\\\".\n   • PROCESS ……… >40 % of key points start with an imperative verb (build, install, configure…).\n   • TIMELINE …… ≥3 distinct dates or years across sources, and content is mostly chronological.\n   • PRO_CON ……… ≥3 \\\"advantage|benefit|pro\\\" *and* ≥3 \\\"disadvantage|con|drawback\\\".\n   • DEFINITION … key points are mostly single‑sentence explanations of a term/concept.\n   • LIST ………… ≥5 unordered items with no obvious ordering (features, tools, libraries, etc.).\n   • GENERAL ……… none of the above.\n2. Scan all `keyPoints` across sources → cluster by semantic similarity (≥0.8 cosine with simple‑sentence‑embeddings). Keep one representative sentence per cluster, append source refs.\n3. Build Markdown doc:\n   • YAML front‑matter (title, category, tags, date, sources)\n   • Summary paragraph (auto‑generated)\n   • Unified Key Points list (deduplicated)\n   • Detail sections grouped by cluster → bullet the unique supporting quotes/data\n   • Sources list (MD links).\n4. Return {path, markdown} – do NOT write to disk.\n5. attempt_completion returning {path, markdown}.",
+    "groups": ["read", "edit", "mcp"],
+    "source": "global"
+  },
+  {
+    "slug": "knowledge-indexer",
+    "name": "🔍 Knowledge Indexer",
+    "roleDefinition": "Update project‑wide indexes so docs are discoverable.",
+    "customInstructions": "1. Read or create index.md, tags.md, search-index.json under ~/knowledge.\n2. Add entry for the new document under correct category/subcategory, newest first.\n3. Under each tag add entry (new section if tag missing).\n4. In search‑index.json append {path,title,category,sub,tags,keywords,date} (keywords = title + tags + headings minus stop‑words). Payload is provided by knowledge‑organizer and already deduplicated.\n5. Save files; on write failure create .bak and continue.\n6. attempt_completion with an INDEX UPDATE REPORT (docs added, new cats/tags yes/no).",
+    "groups": ["read", "edit", "mcp"],
+    "source": "global"
+  }
   ]
 }
