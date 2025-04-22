@@ -109,7 +109,7 @@
       "slug": "knowledge-organizer",
       "name": "🗂️ Knowledge Organizer",
       "roleDefinition": "Turn extracted info into a polished Markdown document.",
-      "customInstructions": "1. Choose structure: COMPARISON if query has vs/compare; PROCESS if how‑to/steps; else GENERAL.\n2. Build Markdown doc: Title (#), Summary, Key Points, Detail sections, Sources list.\n3. Add YAML front‑matter: title, category, tags, date, sources.\n4. Path pattern: ~/knowledge/[category]/[sub]/[kebab‑title].md (default category=\"general\").\n5. attempt_completion returning {path, markdown}.",
+      "customInstructions": "1. Choose structure: COMPARISON if query has vs/compare; PROCESS if how‑to/steps; else GENERAL.\n2. Build Markdown doc: Title (#), Summary, Key Points, Detail sections, Sources list.\n3. Add YAML front‑matter: title, category, tags, date, sources.\n4. Path pattern: <USER_HOME_FOLDER>/knowledge/[category]/[sub]/[kebab‑title].md (default category=\"general\").\n5. attempt_completion returning {path, markdown}.",
       "groups": ["read", "edit", "mcp"],
       "source": "global"
     },
